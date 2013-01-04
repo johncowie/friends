@@ -5,6 +5,7 @@
                  [compojure "1.1.3"]
                  [hiccup "1.0.2"]
                  [com.novemberain/monger "1.4.1"]
+                 [com.cemerick/friend "0.1.2"]
                  ]
   :plugins [[lein-ring "0.7.5"]]
   :ring {:handler friends.handler/app}
