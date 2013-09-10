@@ -8,11 +8,12 @@
    [friends.views :as views]
    ;[sandbar.auth :as auth]
    [sandbar.stateful-session :as ss]
+   [friends.db :as db]
    )
   (:import [twitter4j Twitter TwitterFactory]
            [twitter4j.conf PropertyConfiguration]))
 
-(def auth-on true)
+(def auth-on false)
 
 (defn html-response [html]
   (content-type (response html) "text/html"))
@@ -26,8 +27,7 @@
         request-token (. twitter (getOAuthRequestToken callback-url))]
     (ss/session-put! :twitter twitter)
     (ss/session-put! :request-token request-token)
-    (redirect (. request-token (getAuthenticationURL)))
-    ))
+    (redirect (. request-token (getAuthenticationURL)))))
 
 (defn callback [params]
   (let [
@@ -37,14 +37,12 @@
     (. twitter (getOAuthAccessToken request-token verifier))
     (let [user (. twitter (showUser (. twitter (getId))))]
       (ss/session-put! :user {:handle (. user (getScreenName)) :name (. user (getName)) :id (. user (getId))})
-      (redirect "/")
-      )))
+      (redirect "/"))))
 
 (defn logout [redirect-url]
   (assoc
    (redirect redirect-url)
-   :cookies {"ring-session" {:value "" :max-age 0}}
-   ))
+   :cookies {"ring-session" {:value "" :max-age 0}}))
 
 (defn auth [response]
   (if auth-on
@@ -54,11 +52,19 @@
     (do
       (ss/session-put! :user {:handle "testhandle" :name "Test Name" :id 1})
       response
-      )
-    ))
+      )))
 
 (defn get-dashboard []
   (html-response (views/dashboard (ss/session-get :user))))
+
+(defn get-friend-list []
+  (html-response (views/friend-list (ss/session-get :user))))
+
+(defn add-friend [params]
+  (println params)
+  (db/insert-friend (assoc params :user (:id (ss/session-get :user))))
+  (redirect "/friend-list")
+  )
 
 (defroutes app-routes
   (GET "/" [] (auth (get-dashboard)))
@@ -66,6 +72,8 @@
   (POST "/login" {params :params} (login "/"))
   (POST "/logout" []  (logout "/"))
   (GET "/callback" {params :params} (callback params))
+  (GET "/friend-list" [] (auth (get-friend-list)))
+  (POST "/friend-list" {params :params} (auth (add-friend params)))
   (route/resources "/")
   (route/not-found "Not Found"))
 
