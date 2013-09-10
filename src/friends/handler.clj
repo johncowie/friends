@@ -61,8 +61,12 @@
   (html-response (views/friend-list (ss/session-get :user))))
 
 (defn add-friend [params]
-  (println params)
   (db/insert-friend (assoc params :user (:id (ss/session-get :user))))
+  (redirect "/friend-list")
+  )
+
+(defn delete-friend [params]
+  (db/delete-friend (:id params))
   (redirect "/friend-list")
   )
 
@@ -74,6 +78,7 @@
   (GET "/callback" {params :params} (callback params))
   (GET "/friend-list" [] (auth (get-friend-list)))
   (POST "/friend-list" {params :params} (auth (add-friend params)))
+  (POST "/friend-list/delete" {params :params} (auth (delete-friend params)))
   (route/resources "/")
   (route/not-found "Not Found"))
 

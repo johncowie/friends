@@ -79,4 +79,10 @@
           (for [x (db/get-friends (:id user))]
             [:tr
              [:td (str (:firstname x) " " (:lastname x))]
+             [:td
+              [:form {:class "form-inline" :role :form :method :post :action "/friend-list/delete"}
+               [:input {:type :hidden :name :id :value (:_id x)}]
+               [:button {:type :submit :class "btn btn-danger"} "Delete"]
+               ]
+              ]
              ])]]))

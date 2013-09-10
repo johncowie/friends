@@ -10,5 +10,9 @@
 (defn insert-friend [f]
   (mc/save "friends" f))
 
+(defn delete-friend [id]
+  (mc/remove-by-id "friends" (ObjectId. id))
+  )
+
 (defn get-friends [id]
   (mc/find-maps "friends" {:user id}))
