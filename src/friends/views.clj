@@ -6,7 +6,7 @@
    [friends.db :as db]
    ))
 
-(defn navbar []
+(defn navbar [user]
   [:div {:class "navbar navbar-inverse navbar-fixed-top"}
    [:div {:class "container"}
     [:div {:class "navbar-header"}
@@ -15,7 +15,7 @@
       [:span {:class "icon-bar"}]
       [:span {:class "icon-bar"}]
       ]
-     [:a {:class "navbar-brand" :href "/"} "Friends"]
+     [:a {:class "navbar-brand" :href "/"} (if (nil? user) "Friends" (str (:name user) "'s friends" ))]
      ]
     [:div {:class "collapse navbar-collapse"}
 
@@ -24,19 +24,26 @@
       ;[:li [:a {:href "#admin"} "Admin"]]
       ;[:li [:a {:href "#faq"} "FAQ"]]
       ]
+
+     (if (nil? user)
+       [:form {:class "navbar-form navbar-right" :action "/login" :method :post}
+        [:button {:type :submit :class "btn btn-success" :name :login} "Login"]]
+       [:form {:class "navbar-form navbar-right" :action "/logout" :method :post}
+        [:button {:type :submit :class "btn btn-danger" :name :logout} "Logout"]]
+       )
      ]
     ]
    ]
   )
 
-(defn wrap [title & content]
+(defn wrap [user title & content]
   (html5 [:head
           [:title title]
           (include-css "/css/bootstrap.css" "/css/custom.css")
           (include-js "/js/jquery.min.js" "/js/bootstrap.js")
          ]
          [:body
-          (navbar)
+          (navbar user)
           [:div {:class "container"}
            [:div {:class "main"}
             content]
@@ -44,14 +51,14 @@
          ]))
 
 (defn login []
-  (wrap "Login"
+  (wrap nil "Login"
      [:h1 "Heya, you're gonna need to log in."]
      [:form {:method "post"}
       [:button {:type :submit :class "btn btn-primary" :name :login} "Login"]
       ]))
 
 (defn dashboard [user]
-  (wrap "Dashboard"
+  (wrap user "Dashboard"
    [:h2 (format "Hello %s (%s)" (:name user) (:handle user))]
    [:form {:method "post" :action "/logout"}
     [:button {:type :submit :class "btn btn-primary" :name :logout} "Logout"]
@@ -71,7 +78,7 @@
    ])
 
 (defn friend-list [user]
-  (wrap "My Friends"
+  (wrap user "My Friends"
         [:h2 "My Friends"]
         (friend-form)
         [:p

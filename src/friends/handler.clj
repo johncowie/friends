@@ -13,7 +13,7 @@
   (:import [twitter4j Twitter TwitterFactory]
            [twitter4j.conf PropertyConfiguration]))
 
-(def auth-on false)
+(def auth-on true)
 
 (defn html-response [html]
   (content-type (response html) "text/html"))
@@ -73,7 +73,7 @@
 (defroutes app-routes
   (GET "/" [] (auth (get-dashboard)))
   (GET "/login" [] (html-response (views/login)))
-  (POST "/login" {params :params} (login "/"))
+  (POST "/login" [] (login "/"))
   (POST "/logout" []  (logout "/"))
   (GET "/callback" {params :params} (callback params))
   (GET "/friend-list" [] (auth (get-friend-list)))
