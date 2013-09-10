@@ -1,75 +1,75 @@
 (ns friends.handler
-  (:use [compojure.core])
-  (:require [compojure.handler :as handler]
-            [compojure.route :as route]
-            [ring.util.response :as ring-response]
-            [ring.middleware.session :as ring-session]
-            [hiccup.core :as hiccup]
-            [hiccup.form :as form]
-            [friends.db :as db]))
+  (:require
+   [compojure.core :refer [defroutes GET POST DELETE]]
+   [compojure.handler :as handler]
+   [compojure.route :as route]
+   [ring.middleware.session :as session]
+   [ring.util.response :refer [response redirect content-type]]
+   [friends.views :as views]
+   ;[sandbar.auth :as auth]
+   [sandbar.stateful-session :as ss]
+   )
+  (:import [twitter4j Twitter TwitterFactory]
+           [twitter4j.conf PropertyConfiguration]))
 
-(defn friend-list [username]
-  (hiccup/html
-   [:h2 "My Friends"]
-   [:ul
-    (for [f (db/get-friends username)]
-      [:li (:name f)
-       (form/form-to [:delete (format "/friends/%s" (:_id f))]
-          (form/submit-button "Remove Friend"))])]))
+(def auth-on true)
 
-(defn homepage [session]
-  (hiccup/html
-   [:h1 (format "Hello %s, Here are your friends" (session :username))]
-   (form/form-to [:post "/friends"]
-                    (form/label "friendname" "Friend's Name: ")
-                    (form/text-field "friendname" :friendname)
-                    (form/submit-button "Add Friend"))
-   (friend-list (session :username))))
+(defn html-response [html]
+  (content-type (response html) "text/html"))
 
-(defn loginpage []
-  (hiccup/html
-   [:h1 "Login"]
-   (form/form-to [:post "/"]
-                 (form/label "username" "Username: ")
-                 (form/text-field "username" :username)
-                 (form/submit-button "Login"))))
+(def twitter-config
+  (PropertyConfiguration. (clojure.java.io/input-stream "/Users/John/Dropbox/nuotltester.properties")))
 
-(defn login [username]
-  (let [user (db/find-user username)]
-    (if (nil? user)
-      (ring-response/redirect "/")
-      (assoc (ring-response/redirect "/friends") :session {:username username}))))
+(defn login [redirect-url]
+  (let [twitter (. (TwitterFactory. twitter-config) (getInstance))
+        callback-url "http://localhost:7777/callback"
+        request-token (. twitter (getOAuthRequestToken callback-url))]
+    (ss/session-put! :twitter twitter)
+    (ss/session-put! :request-token request-token)
+    (redirect (. request-token (getAuthenticationURL)))
+    ))
 
-(defn add-friend [session params]
-  (db/insert-friend {:username (session :username) :name (params :friendname)})
-  (ring-response/redirect "/friends"))
+(defn callback [params]
+  (let [
+        twitter (ss/session-get :twitter)
+        request-token (ss/session-get :request-token)
+        verifier (:oauth_verifier params)]
+    (. twitter (getOAuthAccessToken request-token verifier))
+    (let [user (. twitter (showUser (. twitter (getId))))]
+      (ss/session-put! :user {:handle (. user (getScreenName)) :name (. user (getName)) :id (. user (getId))})
+      (redirect "/")
+      )))
 
-(defn delete-friend [id] (db/delete-friend id) (ring-response/redirect "/"))
+(defn logout [redirect-url]
+  (assoc
+   (redirect redirect-url)
+   :cookies {"ring-session" {:value "" :max-age 0}}
+   ))
 
-(defn print-handler [app]
-  (fn [request]
-    (println (format "INCOMING REQUEST: %s" request))
-    (println (format "SESSION: " (request :session)))
-    (app request)))
+(defn auth [response]
+  (if auth-on
+    (if (nil? (ss/session-get :user))
+      (redirect "/login")
+      response)
+    (do
+      (ss/session-put! :user {:handle "testhandle" :name "Test Name" :id 1})
+      response
+      )
+    ))
 
-(def users {"root" {:username "root"
-                    :password (creds/hash-bcrypt "admin_password")
-                    :roles #{::admin}}
-            "jane" {:username "jane"
-                    :password (creds/hash-bcrypt "user_password")
-                    :roles #{::user}}})
-
-
+(defn get-dashboard []
+  (html-response (views/dashboard (ss/session-get :user))))
 
 (defroutes app-routes
-  (GET "/" [] (ring-response/response (loginpage)))
-  (POST "/" {params :params} (login (params :username)))
-  (GET "/friends" {session :session} (homepage session))
-  (POST "/friends" {params :params session :session} (add-friend session params))
-  (DELETE "/:id" [id] (delete-friend id))
+  (GET "/" [] (auth (get-dashboard)))
+  (GET "/login" [] (html-response (views/login)))
+  (POST "/login" {params :params} (login "/"))
+  (POST "/logout" []  (logout "/"))
+  (GET "/callback" {params :params} (callback params))
+  (route/resources "/")
   (route/not-found "Not Found"))
 
 (def app
   (-> (handler/site app-routes)
-      (ring-session/wrap-session)
-      (print-handler)))
+      (ss/wrap-stateful-session)
+      ))
