@@ -7,6 +7,8 @@
                  [org.twitter4j/twitter4j-core "3.0.3"]
                  [com.novemberain/monger "1.4.1"]
                  [sandbar/sandbar "0.4.0-SNAPSHOT"]
+                 [clj-time "0.6.0"]
+                 [cheshire "5.1.1"]
                  ]
   :plugins [[lein-ring "0.8.5"]]
   :ring {:handler friends.handler/app}

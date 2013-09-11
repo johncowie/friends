@@ -1,7 +1,9 @@
 (ns friends.db
   (:require
    [monger.core :as mg]
-   [monger.collection :as mc])
+   [monger.collection :as mc]
+   [monger.joda-time]
+   [clj-time.core :refer [now]])
   (:import [org.bson.types ObjectId]))
 
 (mg/connect!)
@@ -13,6 +15,10 @@
 (defn delete-friend [id]
   (mc/remove-by-id "friends" (ObjectId. id))
   )
+
+(defn update-last-seen [id]
+  (let [record (mc/find-map-by-id "friends" (ObjectId. id))]
+    (mc/save "friends" (assoc record :last-seen (now)))))
 
 (defn get-friends [id]
   (mc/find-maps "friends" {:user id}))

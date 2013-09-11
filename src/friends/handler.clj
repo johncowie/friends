@@ -70,6 +70,11 @@
   (redirect "/friend-list")
   )
 
+(defn seen-friend [params]
+  (db/update-last-seen (:id params))
+  (redirect "/friend-list")
+  )
+
 (defroutes app-routes
   (GET "/" [] (auth (get-dashboard)))
   (GET "/login" [] (html-response (views/login)))
@@ -79,6 +84,7 @@
   (GET "/friend-list" [] (auth (get-friend-list)))
   (POST "/friend-list" {params :params} (auth (add-friend params)))
   (POST "/friend-list/delete" {params :params} (auth (delete-friend params)))
+  (POST "/friend-list/seen" {params :params} (auth (seen-friend params)))
   (route/resources "/")
   (route/not-found "Not Found"))
 

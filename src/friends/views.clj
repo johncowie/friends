@@ -4,7 +4,16 @@
    [hiccup.form :as form]
    [hiccup.page :refer [html5 include-css include-js]]
    [friends.db :as db]
+   [clj-time.core :refer [time-zone-for-id default-time-zone]]
+   [clj-time.format :refer [formatter unparse]]
    ))
+
+(def custom-date-formatter (formatter (default-time-zone) "dd/MM/yyyy HH:mm" "yyyy"))
+
+(defn format-date [d]
+  (if (nil? d)
+    ""
+    (unparse custom-date-formatter d)))
 
 (defn navbar [user]
   [:div {:class "navbar navbar-inverse navbar-fixed-top"}
@@ -83,13 +92,25 @@
         (friend-form)
         [:p
          [:table {:class :table}
+          [:tr
+           [:th "Name"]
+           [:th "Last seen"]
+           [:th]
+           [:th]
+           ]
           (for [x (db/get-friends (:id user))]
             [:tr
              [:td (str (:firstname x) " " (:lastname x))]
+             [:td (format-date (:last-seen x))]
              [:td
               [:form {:class "form-inline" :role :form :method :post :action "/friend-list/delete"}
                [:input {:type :hidden :name :id :value (:_id x)}]
                [:button {:type :submit :class "btn btn-danger"} "Delete"]
+               ]]
+             [:td
+              [:form {:class "form-inline" :role :form :method :post :action "/friend-list/seen"}
+               [:input {:type :hidden :name :id :value (:_id x)}]
+               [:button {:type :submit :class "btn btn-primary"} "Just seen them"]
                ]
               ]
              ])]]))
